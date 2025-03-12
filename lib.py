@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 
 def mostrar_mensaje():
-    messagebox.showinfo("¡BiIIIIIIIIIIIIInvenido!", "Gracias por utilizar nuestro sistema")
+    messagebox.showinfo("¡BiIIIIIIIIIIIIIOOOOOnvenido!", "Gracias por utilizar nuestro sistema")
 
 # Crear la ventana principal
 ventana = tk.Tk()
