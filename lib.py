@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 
 def mostrar_mensaje():
-    messagebox.showinfo("¡Bienvenido!", "Gracias por utilizar nuestro sistema")
+    messagebox.showinfo("¡BiIIIIIIIIIIIIInvenido!", "Gracias por utilizar nuestro sistema")
 
 # Crear la ventana principal
 ventana = tk.Tk()
@@ -19,4 +19,4 @@ boton = tk.Button(ventana, text="Entrar", font=("Arial", 14), command=mostrar_me
 boton.pack(pady=20)
 
 # Ejecutar la aplicación
-ventana.mainloop()
+ventana.mainloop() 
