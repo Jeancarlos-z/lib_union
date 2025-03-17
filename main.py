@@ -1,21 +1,20 @@
 import flet as ft
 import asyncio
 from views.gestion_productos import gestionar_productos
+from ventas import gestionar_ventas  # Importa el módulo de ventas
 
 def main(page: ft.Page):
     page.title = "Sistema de Librería"
     page.bgcolor = "#e0f7fa"
     page.padding = 20  # Espaciado alrededor
 
-    # Función para manejar la navegación
     def cambiar_pagina(e):
         index = e.control.selected_index
         if index == 1:
             gestionar_productos(page)
         elif index == 2:
-            print("Abrir módulo de ventas")
+            gestionar_ventas(page)  # Llama al módulo de ventas
 
-    # Título estilizado
     titulo = ft.Text(
         "📚 Librería de Útiles Escolares",
         size=32,
@@ -23,12 +22,11 @@ def main(page: ft.Page):
         color="#00796b"
     )
 
-    # Barra de navegación con altura definida
     nav_bar = ft.NavigationRail(
         selected_index=0,
         label_type=ft.NavigationRailLabelType.ALL,
         on_change=cambiar_pagina,
-        expand=True,  # Permite que se expanda en altura
+        expand=True,
         destinations=[
             ft.NavigationRailDestination(
                 icon=ft.Icons.STORE,
@@ -48,13 +46,11 @@ def main(page: ft.Page):
         ],
     )
 
-    # Contenedor de la barra de navegación con altura expandida
     nav_container = ft.Container(
         content=nav_bar,
-        height=page.height,  # Ajusta la altura al tamaño de la página
+        height=page.height,
     )
 
-    # Contenido principal
     content = ft.Column(
         [
             titulo,
@@ -69,7 +65,7 @@ def main(page: ft.Page):
                     ft.ElevatedButton(
                         "Registrar Venta",
                         icon=ft.Icons.POINT_OF_SALE,
-                        on_click=lambda e: print("Abrir módulo de ventas")
+                        on_click=lambda e: gestionar_ventas(page)
                     ),
                 ],
                 alignment=ft.MainAxisAlignment.CENTER
@@ -80,15 +76,14 @@ def main(page: ft.Page):
         spacing=20,
     )
 
-    # Layout de la página con altura expandida
     page.add(
         ft.Row(
             [
-                nav_container,  # Contenedor con altura definida
+                nav_container,
                 ft.VerticalDivider(),
-                ft.Container(content=content, expand=True),  # Expande el contenido
+                ft.Container(content=content, expand=True),
             ],
-            expand=True,  # Permite que toda la fila ocupe el espacio disponible
+            expand=True,
         )
     )
 
