@@ -1,7 +1,7 @@
 import flet as ft
 from views.almacen import gestionar_productos
 
-def crear_layout(page: ft.Page, set_content):
+def crear_layout(page: ft.Page, buscador_inicial):
     """Función que crea la barra de navegación y gestiona las vistas."""
     page.title = "Sistema de Librería"
     page.bgcolor = "#121212"
@@ -11,9 +11,9 @@ def crear_layout(page: ft.Page, set_content):
     def cambiar_pagina(e):
         index = e.control.selected_index
         if index == 0:
-            set_content("inicio")
+            set_content(buscador_inicial)  # ✅ Restaurar el buscador
         elif index == 1:
-            gestionar_productos(page, set_content)  # Ahora pasa `set_content` correctamente
+            gestionar_productos(page, set_content)  # ✅ Mantener la gestión de productos
         elif index == 2:
             set_content("ventas")
 
@@ -36,7 +36,7 @@ def crear_layout(page: ft.Page, set_content):
             ft.NavigationRailDestination(
                 icon=ft.Icons.INVENTORY,
                 selected_icon=ft.Icons.INVENTORY_2,
-                label="Productos",
+                label="Almacén",
             ),
             ft.NavigationRailDestination(
                 icon=ft.Icons.POINT_OF_SALE,
@@ -60,9 +60,7 @@ def crear_layout(page: ft.Page, set_content):
     # Función para actualizar el contenido dinámico
     def set_content(vista):
         if isinstance(vista, ft.Control):
-            contenido_container.content = vista  # Carga contenido dinámico directamente
-        elif vista == "inicio":
-            contenido_container.content = ft.Text("🏠 Bienvenido a la Librería", size=24, color="white")
+            contenido_container.content = vista  # ✅ Carga contenido dinámico directamente
         elif vista == "ventas":
             contenido_container.content = ft.Text("💰 Módulo de Ventas en construcción...", size=24, color="white")
 
@@ -73,9 +71,10 @@ def crear_layout(page: ft.Page, set_content):
         [
             nav_container,
             ft.VerticalDivider(color="#D32F2F", thickness=2),
-            contenido_container,  # El contenido se actualizará aquí
+            contenido_container,  # ✅ Aquí se actualizará el contenido
         ],
         expand=True,
     )
 
     return layout, set_content
+

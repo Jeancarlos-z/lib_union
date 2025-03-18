@@ -1,54 +1,114 @@
 import flet as ft
 import config  # Importamos la conexión desde config.py
+import datetime
 
 def gestionar_productos(page: ft.Page, set_content):
-    page.title = "Gestión de Productos"
+    page.title = "Registro de Productos"
 
-    # Campos de búsqueda y resultados
-    txt_busqueda = ft.TextField(label="Buscar producto", on_change=lambda e: buscar_producto(e, txt_busqueda, txt_stock, txt_marca, txt_pVenta, img_producto))
-    txt_stock = ft.TextField(label="Stock", disabled=True)
-    txt_marca = ft.TextField(label="Marca", disabled=True)
-    txt_pVenta = ft.TextField(label="Precio de Venta", disabled=True)
-    img_producto = ft.Image(width=150, height=150)  # Imagen del producto
+    # Campos de entrada para registrar productos
+    txt_codBarra = ft.TextField(label="Código de Barras")
+    txt_descripcion = ft.TextField(label="Descripción del Producto")
+    txt_marca = ft.TextField(label="Marca")
+    txt_stock = ft.TextField(label="Stock", keyboard_type=ft.KeyboardType.NUMBER)
+    txt_pCaja = ft.TextField(label="Precio por Caja", keyboard_type=ft.KeyboardType.NUMBER)
+    txt_pUnidad = ft.TextField(label="Precio por Unidad", keyboard_type=ft.KeyboardType.NUMBER)
+    txt_pVenta = ft.TextField(label="Precio de Venta", keyboard_type=ft.KeyboardType.NUMBER)
+    txt_imagen = ft.TextField(label="URL de la Imagen", disabled=True)  # Se llenará automáticamente al subir la imagen
 
-    # Botón para volver
-    btn_volver = ft.ElevatedButton("Volver al Menú", on_click=lambda e: set_content("inicio"))
+    # Botón para seleccionar imagen
+    btn_seleccionar_imagen = ft.FilePicker(on_result=lambda e: seleccionar_imagen(e, txt_imagen, page))
+    page.overlay.append(btn_seleccionar_imagen)
 
-    # Contenedor con los campos de búsqueda
+    # Botón para registrar un producto
+    btn_registrar = ft.ElevatedButton("Registrar Producto", on_click=lambda e: registrar_producto(
+        txt_codBarra, txt_descripcion, txt_marca, txt_stock, txt_pCaja, txt_pUnidad, txt_pVenta, txt_imagen, page
+    ))
+
+    # Contenedor con los campos de entrada
     contenedor_productos = ft.Column([
-        txt_busqueda,
-        txt_stock,
+        ft.Text("🛒 Registro de Productos", size=20, weight="bold"),
+        txt_codBarra,
+        txt_descripcion,
         txt_marca,
+        txt_stock,
+        txt_pCaja,
+        txt_pUnidad,
         txt_pVenta,
-        img_producto, 
-        btn_volver
+        ft.Row([
+            txt_imagen,
+            ft.IconButton(icon=ft.icons.UPLOAD_FILE, on_click=lambda _: btn_seleccionar_imagen.pick_files(allow_multiple=False))
+        ]),
+        btn_registrar
     ])
 
     # ACTUALIZA SOLO EL CONTENIDO DINÁMICO DEL LAYOUT
-    set_content(contenedor_productos)  
+    set_content(contenedor_productos)
 
-def buscar_producto(evento, txt_busqueda, txt_stock, txt_marca, txt_pVenta, img_producto):
-    descripcion = txt_busqueda.value.strip()
-    if not descripcion:
-        return  # Si no hay búsqueda, no hacer nada
+def seleccionar_imagen(evento, txt_imagen, page):
+    """Permite seleccionar una imagen y guarda la URL."""
+    if evento.files:
+        imagen_url = evento.files[0].path  # Se guarda la URL local de la imagen
+        txt_imagen.value = imagen_url
+        page.update()
 
-    conn = config.get_connection()  
+def registrar_producto(txt_codBarra, txt_descripcion, txt_marca, txt_stock, txt_pCaja, txt_pUnidad, txt_pVenta, txt_imagen, page):
+    """Registra un nuevo producto en la base de datos."""
+    codBarra = txt_codBarra.value.strip()
+    descripcion = txt_descripcion.value.strip()
+    marca = txt_marca.value.strip()
+    stock = txt_stock.value.strip()
+    pCaja = txt_pCaja.value.strip()
+    pUnidad = txt_pUnidad.value.strip()
+    pVenta = txt_pVenta.value.strip()
+    imagen = txt_imagen.value.strip()
+    fechaRegistro = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Validar campos obligatorios
+    if not codBarra or not descripcion or not marca or not stock or not pCaja or not pUnidad or not pVenta or not imagen:
+        page.dialog = ft.AlertDialog(title=ft.Text("⚠️ Todos los campos son obligatorios"))
+        page.dialog.open = True
+        page.update()
+        return
+
+    # Validar que los valores numéricos sean correctos
+    try:
+        stock = int(stock)
+        pCaja = float(pCaja)
+        pUnidad = float(pUnidad)
+        pVenta = float(pVenta)
+
+        if stock < 0 or pCaja < 0 or pUnidad < 0 or pVenta < 0:
+            raise ValueError
+    except ValueError:
+        page.dialog = ft.AlertDialog(title=ft.Text("⚠️ Stock y precios deben ser valores positivos"))
+        page.dialog.open = True
+        page.update()
+        return
+
+    # Insertar en la base de datos
+    conn = config.get_connection()
     cursor = conn.cursor()
 
-    query = "SELECT stock, marca, pVenta, imagen FROM PRODUCTO WHERE descripcion LIKE ?"
-    cursor.execute(query, (f"%{descripcion}%",))
-    resultado = cursor.fetchone()
-
-    if resultado:
-        stock, marca, pVenta, imagen = resultado
-        txt_stock.value = str(stock)
-        txt_marca.value = marca
-        txt_pVenta.value = f"S/. {pVenta}"
-        
-        # Cargar imagen si existe
-        img_producto.src = imagen if imagen else "ruta/imagen_default.png"
+    query = """INSERT INTO PRODUCTO (codBarra, descripcion, imagen, marca, stock, pCaja, pUnidad, pVenta, fechaRegistro)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+    cursor.execute(query, (codBarra, descripcion, imagen, marca, stock, pCaja, pUnidad, pVenta, fechaRegistro))
+    conn.commit()
 
     cursor.close()
     conn.close()
-    
-    evento.page.update()  # Refrescar UI con los nuevos datos
+
+    # Mostrar mensaje de éxito
+    page.dialog = ft.AlertDialog(title=ft.Text("✅ Producto registrado con éxito"))
+    page.dialog.open = True
+    page.update()
+
+    # Limpiar los campos después del registro
+    txt_codBarra.value = ""
+    txt_descripcion.value = ""
+    txt_marca.value = ""
+    txt_stock.value = ""
+    txt_pCaja.value = ""
+    txt_pUnidad.value = ""
+    txt_pVenta.value = ""
+    txt_imagen.value = ""
+    page.update()
