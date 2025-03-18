@@ -4,7 +4,7 @@ from config import get_connection  # Asegúrate de tener este módulo configurad
 
 def gestionar_ventas(page: ft.Page):
     # =============================
-    # Variables Globales del Módulo
+    # Variables Globales del Móduloo
     # =============================
     sale_items = []       # Lista de productos agregados a la venta
     total_cost = 0.0      # Costo total acumulado
