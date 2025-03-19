@@ -1,5 +1,6 @@
 import flet as ft
 from views.almacen import gestionar_productos
+from views.ventas import gestionar_ventas  # ✅ Importamos la vista de ventas
 
 def crear_layout(page: ft.Page, buscador_inicial):
     """Función que crea la barra de navegación y gestiona las vistas."""
@@ -15,7 +16,7 @@ def crear_layout(page: ft.Page, buscador_inicial):
         elif index == 1:
             gestionar_productos(page, set_content)  # ✅ Mantener la gestión de productos
         elif index == 2:
-            set_content("ventas")
+            gestionar_ventas(page, set_content)  # ✅ Cargar la vista de ventas correctamente
 
     # Barra de navegación
     nav_bar = ft.NavigationRail(
@@ -61,8 +62,6 @@ def crear_layout(page: ft.Page, buscador_inicial):
     def set_content(vista):
         if isinstance(vista, ft.Control):
             contenido_container.content = vista  # ✅ Carga contenido dinámico directamente
-        elif vista == "ventas":
-            contenido_container.content = ft.Text("💰 Módulo de Ventas en construcción...", size=24, color="white")
 
         page.update()
 
@@ -77,4 +76,3 @@ def crear_layout(page: ft.Page, buscador_inicial):
     )
 
     return layout, set_content
-

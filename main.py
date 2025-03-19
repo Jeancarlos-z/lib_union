@@ -45,12 +45,12 @@ def main(page: ft.Page):
         img_producto
     ])
 
-    # 📌 Pasamos el buscador a `crear_layout`
+    # 📌 Crear el layout con la navegación dinámica
     layout, set_content = crear_layout(page, buscador)  
     page.add(layout)
 
-    # 🔹 Mostrar el buscador en la vista de inicio
+    # 🔹 Mostrar el buscador en la vista de inicio por defecto
     set_content(buscador)
 
 if __name__ == "__main__":
-    asyncio.run(ft.app_async(target=main))
+    ft.app(target=main)
