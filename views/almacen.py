@@ -65,9 +65,13 @@ def registrar_producto(txt_codBarra, txt_descripcion, txt_marca, txt_stock, txt_
 
     # Validar campos obligatorios
     if not codBarra or not descripcion or not marca or not stock or not pCaja or not pUnidad or not pVenta or not imagen:
-        page.dialog = ft.AlertDialog(title=ft.Text("⚠️ Todos los campos son obligatorios"))
-        page.dialog.open = True
-        page.update()
+        dialogo_error = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("⚠️ Error"),
+            content=ft.Text("Todos los campos son obligatorios."),
+            actions=[ft.TextButton("Aceptar", on_click=lambda e: page.close(dialogo_error))],
+        )
+        page.open(dialogo_error)
         return
 
     # Validar que los valores numéricos sean correctos
@@ -80,9 +84,13 @@ def registrar_producto(txt_codBarra, txt_descripcion, txt_marca, txt_stock, txt_
         if stock < 0 or pCaja < 0 or pUnidad < 0 or pVenta < 0:
             raise ValueError
     except ValueError:
-        page.dialog = ft.AlertDialog(title=ft.Text("⚠️ Stock y precios deben ser valores positivos"))
-        page.dialog.open = True
-        page.update()
+        dialogo_error = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("⚠️ Error"),
+            content=ft.Text("Stock y precios deben ser valores positivos."),
+            actions=[ft.TextButton("Aceptar", on_click=lambda e: page.close(dialogo_error))],
+        )
+        page.open(dialogo_error)
         return
 
     # Insertar en la base de datos
@@ -98,9 +106,13 @@ def registrar_producto(txt_codBarra, txt_descripcion, txt_marca, txt_stock, txt_
     conn.close()
 
     # Mostrar mensaje de éxito
-    page.dialog = ft.AlertDialog(title=ft.Text("✅ Producto registrado con éxito"))
-    page.dialog.open = True
-    page.update()
+    dialogo_exito = ft.AlertDialog(
+        modal=True,
+        title=ft.Text("✅ Éxito"),
+        content=ft.Text("Producto registrado con éxito."),
+        actions=[ft.TextButton("Aceptar", on_click=lambda e: page.close(dialogo_exito))],
+    )
+    page.open(dialogo_exito)
 
     # Limpiar los campos después del registro
     txt_codBarra.value = ""
