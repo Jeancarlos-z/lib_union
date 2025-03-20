@@ -3,8 +3,8 @@ import pyodbc
 def get_connection():
     return pyodbc.connect(
         "DRIVER={SQL Server};"
-        "SERVER=AMD5;"
+        "SERVER=DESKTOP-2EPUQE6\SQLEXPRESS;"
         "DATABASE=BDUnion;"
         "UID=sa;"
-        "PWD=12345;"
+        "PWD=root;"
     )
