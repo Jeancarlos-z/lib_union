@@ -21,6 +21,7 @@ CREATE TABLE PRODUCTO
 	idProducto           int IDENTITY ( 1,1 ) ,
 	codBarra             varchar(20)  NOT NULL ,
 	descripcion          varchar(100)  NOT NULL ,
+	imagen			     varchar(150)  NOT NULL ,
 	marca                varchar(50)  NOT NULL ,
 	stock                int  NULL check(stock >=0),
 	pCaja                decimal(10,2)  NOT NULL check(pCaja >=0),
