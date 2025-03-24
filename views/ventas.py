@@ -8,44 +8,79 @@ def gestionar_ventas(page: ft.Page, set_content):
     global tabla_ventas, lbl_total  # Permitir modificaciones en la tabla y total
 
     page.title = "Gestión de Ventas"
-
+    page.bgcolor = "#121212"  # Fondo oscuro
+    
     # Campo de búsqueda con autocompletado
     txt_busqueda = ft.TextField(
         label="Buscar producto",
         on_change=lambda e: buscar_producto(txt_busqueda, lista_sugerencias),
-        expand=True
+        expand=True,
+        bgcolor="#1E1E1E",
+        color="white",
+        border_color="#D32F2F",
+        border_radius=10
     )
-    btn_buscar = ft.ElevatedButton("Buscar", on_click=lambda e: mostrar_modal_producto(page, txt_busqueda, lista_sugerencias))
+    btn_buscar = ft.ElevatedButton(
+        "Buscar", 
+        on_click=lambda e: mostrar_modal_producto(page, txt_busqueda, lista_sugerencias),
+        bgcolor="#D32F2F",
+        color="white",
+        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10))
+    )
     
-    lista_sugerencias = ft.ListView(expand=True, height=200)  # Limitamos la altura
+    lista_sugerencias = ft.ListView(expand=True, height=200)
     
     # Tabla de productos agregados a la venta
     tabla_ventas = ft.DataTable(
+        bgcolor="#1E1E1E",
+        border_radius=10,
+        heading_row_color="#D32F2F",
+        data_row_color={"hovered": "#333333"},
         columns=[
-            ft.DataColumn(ft.Text("Descripción")),
-            ft.DataColumn(ft.Text("Marca")),
-            ft.DataColumn(ft.Text("Cantidad")),
-            ft.DataColumn(ft.Text("Costo")),
-            ft.DataColumn(ft.Text("Acciones")),
+            ft.DataColumn(ft.Text("Descripción", color="white")),
+            ft.DataColumn(ft.Text("Marca", color="white")),
+            ft.DataColumn(ft.Text("Cantidad", color="white")),
+            ft.DataColumn(ft.Text("Costo", color="white")),
+            ft.DataColumn(ft.Text("Acciones", color="white")),
         ],
         rows=[],
     )
     
-    lbl_total = ft.Text("Total: 0.00")
-    btn_confirmar = ft.ElevatedButton("Confirmar Venta", on_click=lambda e: confirmar_venta(page))
+    lbl_total = ft.Text("Total: 0.00", color="#D32F2F", size=20, weight="bold")
+    btn_confirmar = ft.ElevatedButton(
+        "Confirmar Venta", 
+        on_click=lambda e: confirmar_venta(page),
+        bgcolor="#D32F2F",
+        color="white",
+        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10))
+    )
     
-    # Organización en dos columnas para mejor distribución
+    # Organización en dos columnas para mejor distribución y estilo profesional
     contenedor = ft.Row([
-        ft.Column([
-            ft.Row([txt_busqueda, btn_buscar], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-            lista_sugerencias,
-        ], expand=2),
+        ft.Container(
+            content=ft.Column([
+                ft.Row([txt_busqueda, btn_buscar], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                lista_sugerencias,
+            ]),
+            expand=2,
+            padding=10,
+            border_radius=10,
+            bgcolor="#1E1E1E",
+            shadow=ft.BoxShadow(blur_radius=10, color="#D32F2F")
+        ),
         
-        ft.Column([
-            tabla_ventas,  # Se coloca a la derecha del buscador
-            lbl_total,
-            btn_confirmar
-        ], expand=3)
+        ft.Container(
+            content=ft.Column([
+                tabla_ventas,  # Se coloca a la derecha del buscador
+                lbl_total,
+                btn_confirmar
+            ]),
+            expand=3,
+            padding=10,
+            border_radius=10,
+            bgcolor="#1E1E1E",
+            shadow=ft.BoxShadow(blur_radius=10, color="#D32F2F")
+        )
     ])
     
     set_content(contenedor)
