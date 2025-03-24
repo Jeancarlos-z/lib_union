@@ -1,156 +1,286 @@
 import flet as ft
-import pyodbc
-from config import get_connection  # Asegúrate de tener este módulo configurado
+import config  # Para la conexión a la BD
+
+tabla_ventas = None  # Definir la tabla como global
+lbl_total = None  # Definir el total globalmente
 
 def gestionar_ventas(page: ft.Page, set_content):
-    # Variables Globales
-    sale_items = []  # Lista de productos agregados a la venta
-    total_cost = 0.0  # Costo total acumulado
-    product_info = {}  # Información del producto seleccionado
+    global tabla_ventas, lbl_total  # Permitir modificaciones en la tabla y total
 
-    # Mensajes de Error
-    msg_buscar = ft.Text(value="", color=ft.colors.RED)
-    msg_agregar = ft.Text(value="", color=ft.colors.RED)
-    msg_finalizar = ft.Text(value="", color=ft.colors.RED)
+    page.title = "Gestión de Ventas"
 
-    # Sección de Búsqueda de Producto
-    txt_codigo = ft.TextField(label="Código", width=150)
-    txt_nombre = ft.TextField(label="Nombre", width=150)
-    btn_buscar = ft.ElevatedButton(text="Buscar")
-
-    # Sección de Detalles del Producto
-    txt_descripcion = ft.TextField(label="Descripción", width=300, read_only=True)
-    txt_marca = ft.TextField(label="Marca", width=150, read_only=True)
-    txt_costo = ft.TextField(label="Costo", width=100, read_only=True)
-    txt_stock = ft.TextField(label="Stock", width=100, read_only=True)
-
-    # Sección para Ingresar Cantidad y Agregar Producto
-    txt_cantidad = ft.TextField(label="Cantidad", width=100)
-    btn_agregar = ft.ElevatedButton(text="Añadir")
-
-    # Tabla de Venta
-    sale_table = ft.DataTable(
+    # Campo de búsqueda con autocompletado
+    txt_busqueda = ft.TextField(
+        label="Buscar producto",
+        on_change=lambda e: buscar_producto(txt_busqueda, lista_sugerencias),
+        expand=True
+    )
+    btn_buscar = ft.ElevatedButton("Buscar", on_click=lambda e: mostrar_modal_producto(page, txt_busqueda, lista_sugerencias))
+    
+    lista_sugerencias = ft.ListView(expand=True, height=200)  # Limitamos la altura
+    
+    # Tabla de productos agregados a la venta
+    tabla_ventas = ft.DataTable(
         columns=[
-            ft.DataColumn(ft.Text("Nombre")),
+            ft.DataColumn(ft.Text("Descripción")),
+            ft.DataColumn(ft.Text("Marca")),
             ft.DataColumn(ft.Text("Cantidad")),
-            ft.DataColumn(ft.Text("Costo Total")),
+            ft.DataColumn(ft.Text("Costo")),
+            ft.DataColumn(ft.Text("Acciones")),
         ],
         rows=[],
-        heading_row_color=ft.colors.BLUE_100,
     )
+    
+    lbl_total = ft.Text("Total: 0.00")
+    btn_confirmar = ft.ElevatedButton("Confirmar Venta", on_click=lambda e: confirmar_venta(page))
+    
+    # Organización en dos columnas para mejor distribución
+    contenedor = ft.Row([
+        ft.Column([
+            ft.Row([txt_busqueda, btn_buscar], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+            lista_sugerencias,
+        ], expand=2),
+        
+        ft.Column([
+            tabla_ventas,  # Se coloca a la derecha del buscador
+            lbl_total,
+            btn_confirmar
+        ], expand=3)
+    ])
+    
+    set_content(contenedor)
 
-    # Sección de Totales y Finalización de Venta
-    txt_total = ft.Text(value="Total: 0.00", size=20, weight="bold")
-    btn_finalizar = ft.ElevatedButton(text="Finalizar Venta", bgcolor=ft.colors.GREEN)
-
-    # Diseño de la Interfaz
-    layout = ft.Column(
-        [
-            ft.Row([txt_codigo, txt_nombre, btn_buscar]),
-            msg_buscar,
-            ft.Row([txt_descripcion, txt_marca, txt_costo, txt_stock]),
-            ft.Row([txt_cantidad, btn_agregar]),
-            msg_agregar,
-            sale_table,
-            txt_total,
-            ft.Row([btn_finalizar]),
-            msg_finalizar,
-        ],
-        alignment=ft.MainAxisAlignment.START,
-        spacing=10,
-    )
-
-    def buscar_producto(e):
-        nonlocal product_info
-        msg_buscar.value = ""  # Limpiar mensaje previo
-        codigo = txt_codigo.value.strip()
-        nombre = txt_nombre.value.strip()
-
-        if not codigo and not nombre:
-            msg_buscar.value = "Ingrese el código o el nombre del producto"
-            page.update()
-            return
-
-        conn = get_connection()
-        cursor = conn.cursor()
-        try:
-            if codigo:
-                query = "SELECT idProducto, descripcion, marca, pVenta, stock FROM PRODUCTO WHERE codBarra = ?"
-                param = codigo
-            else:
-                query = "SELECT idProducto, descripcion, marca, pVenta, stock FROM PRODUCTO WHERE descripcion LIKE ?"
-                param = f"%{nombre}%"
-
-            cursor.execute(query, param)
-            result = cursor.fetchone()
-            if result:
-                pid, desc, marca, costo, stock = result
-                product_info = {"id": pid, "descripcion": desc, "marca": marca, "pVenta": costo, "stock": stock}
-                txt_descripcion.value = desc
-                txt_marca.value = marca
-                txt_costo.value = f"{costo:.2f}"
-                txt_stock.value = str(stock)
-                msg_buscar.value = ""
-            else:
-                msg_buscar.value = "Producto no encontrado"
-        except Exception as err:
-            msg_buscar.value = f"Error: {err}"
-        finally:
-            cursor.close()
-            conn.close()
-        page.update()
-
-    btn_buscar.on_click = buscar_producto
-
-    def agregar_producto(e):
-        nonlocal total_cost
-        msg_agregar.value = ""
-        if not product_info or not txt_cantidad.value.strip():
-            msg_agregar.value = "Complete los espacios en blanco"
-            page.update()
-            return
-
-        try:
-            cantidad = int(txt_cantidad.value)
-            if cantidad <= 0:
-                raise ValueError
-        except ValueError:
-            msg_agregar.value = "Ingrese una cantidad válida"
-            page.update()
-            return
-
-        if cantidad > product_info["stock"]:
-            msg_agregar.value = "Cantidad supera el stock disponible"
-            page.update()
-            return
-
-        costo_unit = product_info["pVenta"]
-        costo_total_producto = costo_unit * cantidad
-
-        sale_items.append({
-            "id": product_info["id"],
-            "nombre": product_info["descripcion"],
-            "cantidad": cantidad,
-            "costo_total": costo_total_producto
-        })
-        sale_table.rows.append(
-            ft.DataRow(
-                cells=[
-                    ft.DataCell(ft.Text(product_info["descripcion"])),
-                    ft.DataCell(ft.Text(str(cantidad))),
-                    ft.DataCell(ft.Text(f"{costo_total_producto:.2f}"))
-                ]
-            )
+def buscar_producto(txt_busqueda, lista_sugerencias):
+    query = txt_busqueda.value.strip()
+    if not query:
+        lista_sugerencias.controls.clear()
+        lista_sugerencias.update()
+        return
+    
+    conn = config.get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT descripcion FROM PRODUCTO WHERE descripcion LIKE ?", (f"%{query}%",))
+    resultados = cursor.fetchall()
+    conn.close()
+    
+    lista_sugerencias.controls.clear()
+    for resultado in resultados:
+        sugerencia = ft.ListTile(
+            title=ft.Text(resultado[0]),
+            on_click=lambda e, desc=resultado[0]: seleccionar_producto(txt_busqueda, desc, lista_sugerencias)
         )
+        lista_sugerencias.controls.append(sugerencia)
+    
+    lista_sugerencias.update()
 
-        total_cost += costo_total_producto
-        txt_total.value = f"Total: {total_cost:.2f}"
-        product_info["stock"] -= cantidad
-        txt_stock.value = str(product_info["stock"])
-        txt_cantidad.value = ""
-        msg_agregar.value = ""
-        page.update()
+def seleccionar_producto(txt_busqueda, descripcion, lista_sugerencias):
+    txt_busqueda.value = descripcion  # Poner la descripción en la barra de búsqueda
+    txt_busqueda.update()  # Actualizar el campo de texto
+    lista_sugerencias.controls.clear()  # Limpiar la lista de sugerencias
+    lista_sugerencias.update()  # Refrescar la interfaz
 
-    btn_agregar.on_click = agregar_producto
 
-    set_content(layout)
+def mostrar_modal_producto(page, txt_busqueda, lista_sugerencias):
+    global tabla_ventas, lbl_total  # Para modificar la tabla dentro de esta función
+
+    descripcion = txt_busqueda.value.strip()
+    if not descripcion:
+        return
+    
+    conn = config.get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT descripcion, marca, stock, pVenta, imagen FROM PRODUCTO WHERE descripcion = ?", (descripcion,))
+    prod = cursor.fetchone()
+    conn.close()
+    
+    if not prod:
+        return
+    
+    txt_cantidad = ft.TextField(label="Cantidad", keyboard_type=ft.KeyboardType.NUMBER)
+    
+    def agregar_producto(e):
+        global tabla_ventas, lbl_total
+
+        cantidad = int(txt_cantidad.value)
+        costo = cantidad * prod[3]
+        row_index = len(tabla_ventas.rows)  # Obtener el índice de la nueva fila
+
+        nueva_fila = ft.DataRow(cells=[
+            ft.DataCell(ft.Text(prod[0])),
+            ft.DataCell(ft.Text(prod[1])),
+            ft.DataCell(ft.Text(str(cantidad))),
+            ft.DataCell(ft.Text(f"{costo:.2f}")),
+            ft.DataCell(ft.Row([
+                ft.IconButton(ft.icons.EDIT, on_click=lambda e, idx=row_index: editar_producto(page, idx)),
+                ft.IconButton(ft.icons.DELETE, on_click=lambda e, idx=row_index: confirmar_eliminar_producto(page, idx))
+            ]))
+        ])
+        
+        tabla_ventas.rows.append(nueva_fila) # Agregar fila
+        tabla_ventas.update()  # Actualizar la tabla
+        actualizar_total() # Actualizar el total
+        page.close(modal) # Cerrar el modal
+    
+    modal = ft.AlertDialog(
+        title=ft.Text("Seleccionar Producto"),
+        content=ft.Column([
+            ft.Text(f"Descripción: {prod[0]}"),
+            ft.Text(f"Marca: {prod[1]}"),
+            ft.Text(f"Stock: {prod[2]}"),
+            ft.Text(f"Precio: {prod[3]:.2f}"),
+            ft.Image(src=prod[4], width=100, height=100),
+            txt_cantidad
+        ]),
+        actions=[
+            ft.TextButton("Cancelar", on_click=lambda e: page.close(modal)),
+            ft.ElevatedButton("Agregar", on_click=agregar_producto)
+        ]
+    )
+    page.open(modal)
+
+def editar_producto(page, row_index):
+    global tabla_ventas
+
+    fila = tabla_ventas.rows[row_index]
+    descripcion = fila.cells[0].content.value
+    cantidad_actual = int(fila.cells[2].content.value)
+    precio_unitario = float(fila.cells[3].content.value) / cantidad_actual  # Calcular el precio unitario
+
+    txt_nueva_cantidad = ft.TextField(label="Nueva Cantidad", value=str(cantidad_actual), keyboard_type=ft.KeyboardType.NUMBER)
+
+    def guardar_edicion(e):
+        nueva_cantidad = int(txt_nueva_cantidad.value)
+        nuevo_costo = nueva_cantidad * precio_unitario
+
+        # Actualizar la fila
+        fila.cells[2].content = ft.Text(str(nueva_cantidad))
+        fila.cells[3].content = ft.Text(f"{nuevo_costo:.2f}")
+        tabla_ventas.update()
+        actualizar_total()
+        page.close(modal)
+
+    modal = ft.AlertDialog(
+        title=ft.Text(f"Editar Producto - {descripcion}"),
+        content=ft.Column([txt_nueva_cantidad]),
+        actions=[
+            ft.TextButton("Cancelar", on_click=lambda e: page.close(modal)),
+            ft.ElevatedButton("Guardar", on_click=guardar_edicion)
+        ]
+    )
+    page.open(modal)
+
+def confirmar_eliminar_producto(page, row_index):
+    global tabla_ventas
+
+    modal = ft.AlertDialog(
+        title=ft.Text("Eliminar Producto"),
+        content=ft.Text("¿Está seguro de que desea eliminar este producto?"),
+        actions=[
+            ft.TextButton("Cancelar", on_click=lambda e: page.close(modal)),
+            ft.ElevatedButton("Eliminar", on_click=lambda e: eliminar_producto(page, row_index, modal))
+        ]
+    )
+    page.open(modal)
+
+def eliminar_producto(page, row_index, modal):
+    global tabla_ventas
+
+    del tabla_ventas.rows[row_index]  # Eliminar la fila
+    tabla_ventas.update()
+    actualizar_total()
+    page.close(modal)
+
+def actualizar_total():
+    global tabla_ventas, lbl_total
+    
+    total = sum(float(row.cells[3].content.value) for row in tabla_ventas.rows)
+    lbl_total.value = f"Total: {total:.2f}"
+    lbl_total.update()
+
+def confirmar_venta(page):
+    modal = ft.AlertDialog(
+        title=ft.Text("Confirmar Venta"),
+        content=ft.Text("¿Desea confirmar la venta?"),
+        actions=[
+            ft.TextButton("Cancelar", on_click=lambda e: page.close(modal)),
+            ft.ElevatedButton("Confirmar", on_click=lambda e: procesar_venta(page, modal))
+        ]
+    )
+    page.open(modal)
+
+def procesar_venta(page, modal):
+    global tabla_ventas
+
+    if not tabla_ventas.rows:
+        return  # No hay productos en la venta, no hacer nada
+
+    conn = config.get_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Insertar una nueva venta en la tabla VENTA y obtener el ID generado
+        cursor.execute("INSERT INTO VENTA (fechaVenta) OUTPUT INSERTED.idVenta VALUES (GETDATE())")
+        id_venta = cursor.fetchone()[0]
+
+        # Insertar los detalles de la venta y actualizar el stock
+        for row in tabla_ventas.rows:
+            descripcion = row.cells[0].content.value
+            cantidad = int(row.cells[2].content.value)
+
+            # Obtener el ID del producto y sus datos
+            cursor.execute("SELECT idProducto, stock, pUnidad FROM PRODUCTO WHERE descripcion = ?", (descripcion,))
+            producto = cursor.fetchone()
+
+            if not producto:
+                raise Exception(f"Producto '{descripcion}' no encontrado en la base de datos.")
+
+            id_producto, stock_actual, p_unidad = producto
+            nuevo_stock = stock_actual - cantidad
+
+            if nuevo_stock < 0:
+                raise Exception(f"Stock insuficiente para '{descripcion}'. Disponible: {stock_actual}, requerido: {cantidad}")
+
+            # Insertar en DETALLE_VENTA
+            cursor.execute(
+                "INSERT INTO DETALLE_VENTA (idVenta, idProducto, cantidad, pUnidad) VALUES (?, ?, ?, ?)",
+                (id_venta, id_producto, cantidad, p_unidad)
+            )
+
+            # Actualizar el stock del producto
+            cursor.execute("UPDATE PRODUCTO SET stock = ? WHERE idProducto = ?", (nuevo_stock, id_producto))
+
+        # Confirmar la transacción
+        conn.commit()
+
+        # Limpiar la tabla de ventas después de registrar la venta
+        tabla_ventas.rows.clear()
+        actualizar_total()
+        tabla_ventas.update()
+
+        # Cerrar el modal de confirmación antes de mostrar el de éxito
+        page.close(modal)
+
+        # Crear y mostrar el modal de éxito
+        modal_exito = ft.AlertDialog(
+            title=ft.Text("Venta registrada"),
+            content=ft.Text("La venta se ha registrado exitosamente."),
+            actions=[ft.TextButton("Aceptar", on_click=lambda e: page.close(modal_exito))]
+        )
+        page.open(modal_exito)
+
+
+    except Exception as e:
+        conn.rollback()  # Revertir cambios en caso de error
+
+        # Cerrar el modal de confirmación antes de mostrar el de error
+        page.close(modal)
+
+        modal_error = ft.AlertDialog(
+            title=ft.Text("Error"),
+            content=ft.Text(f"Error al procesar la venta: {str(e)}"),
+            actions=[ft.TextButton("Aceptar", on_click=lambda e: page.close(modal_error))]
+        )
+        page.open(modal_error)
+
+    finally:
+        conn.close()
