@@ -20,14 +20,7 @@ def gestionar_ventas(page: ft.Page, set_content):
         border_color="#D32F2F",
         border_radius=10
     )
-    btn_buscar = ft.ElevatedButton(
-        "Buscar", 
-        on_click=lambda e: mostrar_modal_producto(page, txt_busqueda, lista_sugerencias),
-        bgcolor="#D32F2F",
-        color="white",
-        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10))
-    )
-    
+
     lista_sugerencias = ft.ListView(expand=True, height=200)
     
     # Tabla de productos agregados a la venta
@@ -59,7 +52,7 @@ def gestionar_ventas(page: ft.Page, set_content):
     contenedor = ft.Row([
         ft.Container(
             content=ft.Column([
-                ft.Row([txt_busqueda, btn_buscar], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                ft.Row([txt_busqueda], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                 lista_sugerencias,
             ]),
             expand=2,
@@ -94,26 +87,31 @@ def buscar_producto(txt_busqueda, lista_sugerencias):
     
     conn = config.get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT descripcion FROM PRODUCTO WHERE descripcion LIKE ?", (f"%{query}%",))
+    cursor.execute(
+        "SELECT codBarra, descripcion FROM PRODUCTO WHERE codBarra LIKE ? OR descripcion LIKE ?",
+        (f"%{query}%", f"%{query}%")
+    )
     resultados = cursor.fetchall()
     conn.close()
     
     lista_sugerencias.controls.clear()
     for resultado in resultados:
+        codBarra, descripcion = resultado
         sugerencia = ft.ListTile(
-            title=ft.Text(resultado[0]),
-            on_click=lambda e, desc=resultado[0]: seleccionar_producto(txt_busqueda, desc, lista_sugerencias)
+            title=ft.Text(f"{codBarra} - {descripcion}"),  # Muestra código de barras y descripción
+            on_click=lambda e, desc=descripcion: seleccionar_producto(txt_busqueda, desc, lista_sugerencias, e.page)
         )
         lista_sugerencias.controls.append(sugerencia)
     
     lista_sugerencias.update()
 
-def seleccionar_producto(txt_busqueda, descripcion, lista_sugerencias):
+def seleccionar_producto(txt_busqueda, descripcion, lista_sugerencias, page):
     txt_busqueda.value = descripcion  # Poner la descripción en la barra de búsqueda
     txt_busqueda.update()  # Actualizar el campo de texto
     lista_sugerencias.controls.clear()  # Limpiar la lista de sugerencias
     lista_sugerencias.update()  # Refrescar la interfaz
-
+    # Abrir automáticamente el modal del producto seleccionado
+    mostrar_modal_producto(page, txt_busqueda, lista_sugerencias)
 
 def mostrar_modal_producto(page, txt_busqueda, lista_sugerencias):
     global tabla_ventas, lbl_total  # Para modificar la tabla dentro de esta función
@@ -136,6 +134,11 @@ def mostrar_modal_producto(page, txt_busqueda, lista_sugerencias):
     def agregar_producto(e):
         global tabla_ventas, lbl_total
 
+        if not txt_cantidad.value.strip().isdigit() or int(txt_cantidad.value) <= 0:
+            txt_cantidad.error_text = "Ingrese una cantidad válida"
+            txt_cantidad.update()
+            return  # No permite continuar si el campo está vacío o tiene un valor inválido
+    
         cantidad = int(txt_cantidad.value)
         costo = cantidad * prod[3]
         row_index = len(tabla_ventas.rows)  # Obtener el índice de la nueva fila
