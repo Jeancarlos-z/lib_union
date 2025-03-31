@@ -1,6 +1,7 @@
 import flet as ft
 from views.almacen import gestionar_productos
 from views.ventas import gestionar_ventas  # ✅ Importamos la vista de ventas
+from views.etiqueta import gestionar_etiquetas  # ✅ Importar la nueva vista
 
 def crear_layout(page: ft.Page, buscador_inicial):
     """Función que crea la barra de navegación y gestiona las vistas."""
@@ -17,6 +18,8 @@ def crear_layout(page: ft.Page, buscador_inicial):
             gestionar_productos(page, set_content)  # ✅ Mantener la gestión de productos
         elif index == 2:
             gestionar_ventas(page, set_content)  # ✅ Cargar la vista de ventas correctamente
+        elif index == 3:
+            gestionar_etiquetas(page, set_content)  # ✅ Nueva vista de etiquetas
 
     # Barra de navegación
     nav_bar = ft.NavigationRail(
@@ -43,6 +46,11 @@ def crear_layout(page: ft.Page, buscador_inicial):
                 icon=ft.Icons.POINT_OF_SALE,
                 selected_icon=ft.Icons.ATTACH_MONEY,
                 label="Ventas",
+            ),
+            ft.NavigationRailDestination(  # ✅ Nueva opción para etiquetas
+                icon=ft.Icons.LABEL,
+                selected_icon=ft.Icons.LABEL_OUTLINE,
+                label="Etiquetas",
             ),
         ],
     )
