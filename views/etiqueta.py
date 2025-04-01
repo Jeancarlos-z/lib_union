@@ -97,14 +97,15 @@ def generar_documento_word(e, page):
 
     try:
         doc = word.Documents.Open(ruta_plantilla)
-        for i, row in enumerate(tabla_etiquetas.rows):
-            descripcion = row.cells[1].content.value
-            marca = row.cells[2].content.value
-            precio = row.cells[3].content.value
+        for i in sorted(range(len(tabla_etiquetas.rows)), reverse=True):
+            descripcion = tabla_etiquetas.rows[i].cells[1].content.value
+            marca = tabla_etiquetas.rows[i].cells[2].content.value
+            precio = tabla_etiquetas.rows[i].cells[3].content.value
 
             reemplazar_texto_en_formas(doc, f"d{i+1}", descripcion)
             reemplazar_texto_en_formas(doc, f"m{i+1}", marca)
             reemplazar_texto_en_formas(doc, f"p{i+1}", precio)
+
 
         doc.SaveAs(ruta_guardado)
         doc.Close()
