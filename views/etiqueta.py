@@ -97,21 +97,27 @@ def generar_documento_word(e, page):
 
     try:
         doc = word.Documents.Open(ruta_plantilla)
-        for i in sorted(range(len(tabla_etiquetas.rows)), reverse=True):
+
+        total_etiquetas = len(tabla_etiquetas.rows)
+
+        # Reemplazar textos de las etiquetas existentes
+        for i in range(total_etiquetas):
             descripcion = tabla_etiquetas.rows[i].cells[1].content.value
             marca = tabla_etiquetas.rows[i].cells[2].content.value
-            precio = tabla_etiquetas.rows[i].cells[3].content.value
+            precio = "S/ " + tabla_etiquetas.rows[i].cells[3].content.value
 
             reemplazar_texto_en_formas(doc, f"d{i+1}", descripcion)
             reemplazar_texto_en_formas(doc, f"m{i+1}", marca)
             reemplazar_texto_en_formas(doc, f"p{i+1}", precio)
 
+        # Eliminar los grupos sobrantes
+        for i in range(total_etiquetas + 1, 13):  # De la siguiente etiqueta hasta la 12
+            eliminar_grupo_por_marcadores(doc, [f"d{i}", f"p{i}", f"m{i}"])
 
         doc.SaveAs(ruta_guardado)
         doc.Close()
         word.Quit()
 
-        # ✅ Crear el diálogo de éxito y abrirlo
         dialogo_exito = ft.AlertDialog(
             title=ft.Text("✅ Éxito"),
             content=ft.Text(f"El archivo se guardó en:\n{ruta_guardado}"),
@@ -122,11 +128,10 @@ def generar_documento_word(e, page):
             open=True
         )
         page.dialog = dialogo_exito
-        page.open(dialogo_exito)  # 📌 IMPORTANTE: Ahora se abre correctamente
+        page.open(dialogo_exito)
+
     except Exception as ex:
         word.Quit()
-        
-        # ✅ Crear el diálogo de error y abrirlo
         dialogo_error = ft.AlertDialog(
             title=ft.Text("❌ Error"),
             content=ft.Text(f"Ocurrió un error: {str(ex)}"),
@@ -134,7 +139,7 @@ def generar_documento_word(e, page):
             open=True
         )
         page.dialog = dialogo_error
-        page.open(dialogo_error)  # 📌 Ahora el error también se muestra correctamente
+        page.open(dialogo_error)
 
     page.update()
 
@@ -142,25 +147,50 @@ def reemplazar_texto_en_formas(doc, marcador, nuevo_texto):
     for shape in doc.Shapes:
         try:
             if shape.Type == 6:
-                modify_shapes_in_group(shape, marcador, nuevo_texto)
+                modificar_formas_en_grupo(shape, marcador, nuevo_texto)
             elif shape.TextFrame.HasText:
-                texto_actual = shape.TextFrame.TextRange.Text
-                if marcador in texto_actual:
-                    shape.TextFrame.TextRange.Text = texto_actual.replace(marcador, nuevo_texto)
+                texto_actual = shape.TextFrame.TextRange.Text.strip()
+                if texto_actual == marcador:
+                    shape.TextFrame.TextRange.Text = nuevo_texto
         except Exception:
             pass
 
-def modify_shapes_in_group(group, marcador, nuevo_texto):
+def modificar_formas_en_grupo(group, marcador, nuevo_texto):
     for shape in group.GroupItems:
         try:
-            if shape.TextFrame.HasText:
-                texto_actual = shape.TextFrame.TextRange.Text
-                if marcador in texto_actual:
-                    shape.TextFrame.TextRange.Text = texto_actual.replace(marcador, nuevo_texto)
             if shape.Type == 6:
-                modify_shapes_in_group(shape, marcador, nuevo_texto)
+                modificar_formas_en_grupo(shape, marcador, nuevo_texto)
+            elif shape.TextFrame.HasText:
+                texto_actual = shape.TextFrame.TextRange.Text.strip()
+                if texto_actual == marcador:
+                    shape.TextFrame.TextRange.Text = nuevo_texto
         except Exception:
             pass
+
+
+def eliminar_grupo_por_marcadores(doc, marcadores):
+    for shape in list(doc.Shapes):  # Crear copia para evitar problemas al eliminar
+        try:
+            if shape.Type == 6:  # Grupo
+                if contiene_marcador_en_grupo(shape, marcadores):
+                    shape.Delete()
+        except Exception as e:
+            print(f"Error eliminando grupo: {e}")
+
+def contiene_marcador_en_grupo(group, marcadores):
+    """Evalúa si algún marcador está dentro de un grupo"""
+    for shape in group.GroupItems:
+        try:
+            if shape.Type == 6:
+                if contiene_marcador_en_grupo(shape, marcadores):
+                    return True
+            elif shape.TextFrame.HasText:
+                texto = shape.TextFrame.TextRange.Text
+                if any(marcador in texto for marcador in marcadores):
+                    return True
+        except:
+            continue
+    return False
 
 def abrir_carpeta(ruta_archivo):
     os.startfile(os.path.dirname(ruta_archivo))
